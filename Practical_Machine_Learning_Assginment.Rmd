@@ -1,0 +1,113 @@
+---
+title: "Practical_Machine_Learning_Assignment"
+author: "Adeel"
+date: "6/8/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#Importing relevant libraries
+
+library(caret) 
+library(randomForest)
+library(rpart)
+```
+
+``` {r}
+# Importing data and replacing the null values with NA
+training <- read.csv("D:/MOOC/John_Hopskins/Practical_Machine_Learning/pml-training.csv",na.strings=c("NA","#DIV/0!", ""))
+test <- read.csv("D:/MOOC/John_Hopskins/Practical_Machine_Learning/pml-testing.csv",na.strings=c("NA","#DIV/0!", ""))
+
+dim(training)
+dim(test)
+
+# Remove the columns with all the missing values 
+training<-training[,colSums(is.na(training)) == 0]
+test <-test[,colSums(is.na(test)) == 0]
+head(training)
+```
+
+```{r}
+# We can see that starting few variables are quite irrelevant so we can remove that
+training <-training[,-c(1:7)]
+test <-test[,-c(1:7)]
+dim(training)
+dim(test)
+
+head(test)
+
+```
+```{r}
+
+# Now we need to divide the training sample into sub training and validation
+
+subsamples <- createDataPartition(y=training$classe, p=0.70, list=FALSE)
+subtraining <- training[subsamples, ] 
+validation <- training[-subsamples, ]
+dim(subtraining)
+dim(validation)
+head(subtraining)
+head(validation)
+# As the data is categorical lets plot the bar plot to see the class variation
+plot(subtraining$classe, main="Bar Plot of levels in training", xlab="classe levels", ylab="Frequency")
+```
+
+```{r}
+library(rpart.plot)
+model1 <- rpart(classe ~ ., data=subtraining, method="class")
+
+# Predicting:
+prediction1 <- predict(model1, validation, type = "class")
+
+# Plot of the Decision Tree
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+
+#Finding the result of the model using confusion matrix
+
+confusionMatrix(prediction1, validation$classe)
+```
+
+
+``` {r}
+# The classification tree has the accuracy of about 75% now let's try with the Random Forest
+
+model2 <- randomForest(classe ~. , data=subtraining, method="class")
+
+# Predicting:
+prediction2 <- predict(model2, validation, type = "class")
+
+# Test results on subTesting data set:
+confusionMatrix(prediction2, validation$classe)
+
+
+```
+
+
+## We can see from the above analysis that the Random Forest is performing way better than classification model. Random forest is able to predict the results with the accuracy of 99.49%. Now will use this model for final predication on the test file.
+
+
+```{r}
+predictfinal <- predict(model2, test, type="class")
+predictfinal
+
+```
+
+
+
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictfinal)
+
+```
